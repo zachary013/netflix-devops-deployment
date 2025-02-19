@@ -2,6 +2,7 @@ provider "aws" {
   region = var.region
 }
 
+// VPC
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -11,6 +12,7 @@ resource "aws_vpc" "main" {
   }
 }
 
+// Internet Gateway
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
   tags = {
@@ -18,6 +20,7 @@ resource "aws_internet_gateway" "gw" {
   }
 }
 
+// Public Subnet
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnets)
   vpc_id                  = aws_vpc.main.id
@@ -29,6 +32,7 @@ resource "aws_subnet" "public" {
   }
 }
 
+// Route Table for Public Subnet
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   route {

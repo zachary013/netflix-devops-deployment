@@ -11,6 +11,7 @@ resource "aws_ecr_repository" "nextflix" {
   }
 
   tags = {
-    Name = "nextflix"
+    env = "production"
+    app = "nextflix"
   }
 }
