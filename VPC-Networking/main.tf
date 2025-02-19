@@ -1,7 +1,4 @@
-provider "aws" {
-  region = var.region
-}
-
+//VPC
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -10,7 +7,7 @@ resource "aws_vpc" "main" {
     Name = "main-vpc"
   }
 }
-
+//Internet Gateway
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
   tags = {
@@ -18,6 +15,7 @@ resource "aws_internet_gateway" "gw" {
   }
 }
 
+//Public Subnet
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnets)
   vpc_id                  = aws_vpc.main.id
@@ -29,6 +27,7 @@ resource "aws_subnet" "public" {
   }
 }
 
+//Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   route {
@@ -40,6 +39,7 @@ resource "aws_route_table" "public" {
   }
 }
 
+//Route Table assoc
 resource "aws_route_table_association" "public" {
   count          = length(var.public_subnets)
   subnet_id      = aws_subnet.public[count.index].id
