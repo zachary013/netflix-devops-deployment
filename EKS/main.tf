@@ -2,103 +2,59 @@ provider "aws" {
   region = var.region
 }
 
-# Import VPC Outputs from the VPC module
-module "vpc" {
-  source = "../VPC"
-  region         = var.region
-  vpc_cidr       = var.vpc_cidr
-  public_subnets = var.public_subnets
-  availability_zones = var.availability_zones
+data "aws_iam_policy_document" "eks_cluster_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+  }
 }
 
-# Create IAM Role for EKS Cluster
 resource "aws_iam_role" "eks_cluster" {
-  name = "eks-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-      }
-    ]
-  })
+  name               = "nextflix-eks-cluster-role"
+  assume_role_policy = data.aws_iam_policy_document.eks_cluster_assume_role.json
 }
 
-# Attach Necessary Policies to the EKS Cluster Role
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSClusterPolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.eks_cluster.name
 }
 
-resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.eks_cluster.name
-}
-
-# Create the EKS Cluster
-resource "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "nextflix" {
   name     = "nextflix-eks-cluster"
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids = module.vpc.public_subnets
+    subnet_ids = var.public_subnets
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_cluster_policy,
-    aws_iam_role_policy_attachment.eks_vpc_resource_controller
-  ]
 
   tags = {
     Name = "nextflix-eks-cluster"
   }
 }
 
-# Create IAM Role for EKS Node Groups
-resource "aws_iam_role" "eks_node_group" {
-  name = "eks-node-group-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
+data "aws_iam_policy_document" "eks_nodegroup_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
 }
 
-# Attach Necessary Policies to the EKS Node Group Role
-resource "aws_iam_role_policy_attachment" "eks_node_group_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.eks_node_group.name
+resource "aws_iam_role" "eks_nodegroup" {
+  name               = "nextflix-eks-nodegroup-role"
+  assume_role_policy = data.aws_iam_policy_document.eks_nodegroup_assume_role.json
 }
 
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSCNIPolicy"
-  role       = aws_iam_role.eks_node_group.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_ecr_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = aws_iam_role.eks_node_group.name
-}
-
-# Create EKS Node Group
-resource "aws_eks_node_group" "workers" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "nextflix-workers"
-  node_role_arn   = aws_iam_role.eks_node_group.arn
-  subnet_ids      = module.vpc.public_subnets
+resource "aws_eks_node_group" "nextflix" {
+  cluster_name    = aws_eks_cluster.nextflix.name
+  node_group_name = "nextflix-node-group"
+  subnet_ids      = var.public_subnets
+  node_role_arn   = aws_iam_role.eks_nodegroup.arn
 
   scaling_config {
     desired_size = 2
@@ -106,21 +62,11 @@ resource "aws_eks_node_group" "workers" {
     min_size     = 1
   }
 
-  instance_types = ["t3.medium"]
-
-  ami_type = "AL2_x86_64"
-
-  disk_size = 20
-
-  labels = {
-    Environment = "dev"
+  remote_access {
+    ec2_ssh_key = var.key_pair_name
   }
 
   tags = {
-    Name = "nextflix-eks-workers"
+    Name = "nextflix-node-group"
   }
-
-  depends_on = [
-    aws_eks_cluster.main
-  ]
 }

@@ -3,18 +3,13 @@ variable "region" {
   type        = string
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+variable "vpc_id" {
+  description = "ID of the VPC"
   type        = string
 }
 
 variable "public_subnets" {
-  description = "List of CIDR blocks for public subnets"
-  type        = list(string)
-}
-
-variable "availability_zones" {
-  description = "List of availability zones"
+  description = "List of public subnet IDs"
   type        = list(string)
 }
 
