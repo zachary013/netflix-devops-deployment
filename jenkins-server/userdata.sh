@@ -1,29 +1,44 @@
 #!/bin/bash
 
 # Update package lists
-sudo apt update -y
+sudo apt-get update
+sudo apt-get upgrade -y
 
 # Install Docker
-sudo apt install -y docker.io
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -aG docker ubuntu
 
-# Install Jenkins
-wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
-sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
-sudo apt update -y
-sudo apt install -y jenkins
+# Install dependencies for Jenkins
+echo "Installing dependencies for Jenkins..."
+sudo apt-get install -y fontconfig openjdk-17-jre wget gnupg software-properties-common unzip
+
+# Add Jenkins GPG key and repository
+echo "Adding Jenkins GPG key and repository..."
+sudo wget -qO /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt-get update -y
+echo "Installing Jenkins..."
+sudo apt-get install -y jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
 
 # Install kubectl
-curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.27.1/2023-04-19/bin/linux/amd64/kubectl
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.2/2024-11-15/bin/linux/amd64/kubectl
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.2/2024-11-15/bin/linux/amd64/kubectl.sha256
+sha256sum -c kubectl.sha256
 chmod +x ./kubectl
-sudo mv ./kubectl /usr/local/bin/kubectl
+mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
 
 # Install AWS CLI
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
+curl -o "awscliv2.zip" "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+unzip -q awscliv2.zip
 sudo ./aws/install
+rm -f awscliv2.zip
+rm -rf aws
 
 # Install Trivy (container image scanner)
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
