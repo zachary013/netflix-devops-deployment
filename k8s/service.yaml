@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: netflix-app
+  name: nextflix-app
   labels:
-    app: netflix-app
+    app: nextflix-app
 spec:
+  type: LoadBalancer
   ports:
   - name: http
     port: 3000
     protocol: TCP
     targetPort: 3000
   selector:
-    app: netflix-app
-  type: LoadBalancer
+    app: nextflix-app

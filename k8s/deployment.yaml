@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: netflix-app
+  name: nextflix-app
   labels:
-    app: netflix-app
+    app: nextflix-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: netflix-app
+      app: nextflix-app
   template:
     metadata:
       labels:
-        app: netflix-app
+        app: nextflix-app
     spec:
       containers:
-      - name: netflix-app
-        image: gauris17/netflix:latest
+      - name: nextflix-app
+        image: public.ecr.aws/s2g7y4g3/nextflix:latest
         ports:
         - containerPort: 3000
