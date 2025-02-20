@@ -44,12 +44,7 @@ rm -rf aws
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
 # Start SonarQube using Docker
-docker run -d --name sonarqube \
-  -p 9000:9000 \
-  -v sonarqube_data:/opt/sonarqube/data \
-  -v sonarqube_logs:/opt/sonarqube/logs \
-  -v sonarqube_extensions:/opt/sonarqube/extensions \
-  sonarqube:latest
+docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
 
 # Restart Jenkins to apply changes
 sudo systemctl restart jenkins

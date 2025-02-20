@@ -20,6 +20,7 @@ data "aws_subnet" "public" {
     values = ["public-subnet-1"]
   }
 }
+
 # Data source to get security group
 data "aws_security_group" "jenkins" {
   vpc_id = data.aws_vpc.main.id

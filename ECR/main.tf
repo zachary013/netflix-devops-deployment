@@ -1,13 +1,17 @@
 provider "aws" {
-  region = var.region
+  alias  = "us_east_1"
+  region = "us-east-1"
 }
 
-resource "aws_ecr_repository" "nextflix" {
-  name                 = "nextflix"
-  image_tag_mutability = "MUTABLE"
+resource "aws_ecrpublic_repository" "nextflix" {
+  provider         = aws.us_east_1
+  repository_name  = var.repository_name
 
-  image_scanning_configuration {
-    scan_on_push = true
+  catalog_data {
+    about_text        = "This repository contains Docker images for the Nextflix movie app"
+    description       = "Nextflix Movies application container images"
+    architectures     = ["ARM"]
+    operating_systems = ["Linux"]
   }
 
   tags = {

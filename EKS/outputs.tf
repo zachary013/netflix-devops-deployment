@@ -1,7 +1,7 @@
-output "eks_cluster_endpoint" {
-  value = aws_eks_cluster.nextflix.endpoint
+output "cluster_endpoint" {
+  value = aws_eks_cluster.main.endpoint
 }
 
-output "eks_cluster_certificate_authority" {
-  value = aws_eks_cluster.nextflix.certificate_authority[0].data
+output "kubeconfig_command" {
+  value = "aws eks update-kubeconfig --region ${var.region} --name ${aws_eks_cluster.main.name}"
 }

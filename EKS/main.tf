@@ -2,71 +2,152 @@ provider "aws" {
   region = var.region
 }
 
-data "aws_iam_policy_document" "eks_cluster_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["eks.amazonaws.com"]
-    }
+# Get existing VPC and subnets
+data "aws_vpc" "main" {
+  filter {
+    name   = "tag:Name"
+    values = ["main-vpc"]
   }
 }
 
-resource "aws_iam_role" "eks_cluster" {
-  name               = "nextflix-eks-cluster-role"
-  assume_role_policy = data.aws_iam_policy_document.eks_cluster_assume_role.json
+data "aws_subnets" "public" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.main.id]
+  }
+  
+  filter {
+    name   = "tag:Name"
+    values = ["public-subnet-*"]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSClusterPolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks_cluster.name
-}
+# Security group for EKS cluster
+resource "aws_security_group" "eks_sg" {
+  name        = "eks-cluster-sg"
+  description = "Security group for EKS cluster"
+  vpc_id      = data.aws_vpc.main.id
 
-resource "aws_eks_cluster" "nextflix" {
-  name     = "nextflix-eks-cluster"
-  role_arn = aws_iam_role.eks_cluster.arn
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTPS traffic to EKS API"
+  }
 
-  vpc_config {
-    subnet_ids = var.public_subnets
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
   }
 
   tags = {
-    Name = "nextflix-eks-cluster"
+    Name = "eks-cluster-sg"
   }
 }
 
-data "aws_iam_policy_document" "eks_nodegroup_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
+# IAM Role for EKS Cluster
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster_role.name
+}
+
+# IAM Role for EKS Node Group
+resource "aws_iam_role" "eks_node_role" {
+  name = "eks-node-group-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_read_only" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+# Create EKS Cluster
+resource "aws_eks_cluster" "main" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_cluster_role.arn
+  version  = var.kubernetes_version
+
+  vpc_config {
+    subnet_ids = data.aws_subnets.public.ids
+    endpoint_private_access = false
+    endpoint_public_access  = true
+    security_group_ids      = [aws_security_group.eks_sg.id]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy
+  ]
+  
+  tags = {
+    Name = var.cluster_name
   }
 }
 
-resource "aws_iam_role" "eks_nodegroup" {
-  name               = "nextflix-eks-nodegroup-role"
-  assume_role_policy = data.aws_iam_policy_document.eks_nodegroup_assume_role.json
-}
-
-resource "aws_eks_node_group" "nextflix" {
-  cluster_name    = aws_eks_cluster.nextflix.name
-  node_group_name = "nextflix-node-group"
-  subnet_ids      = var.public_subnets
-  node_role_arn   = aws_iam_role.eks_nodegroup.arn
+# Create EKS Node Group
+resource "aws_eks_node_group" "main" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "${var.cluster_name}-node-group"
+  node_role_arn   = aws_iam_role.eks_node_role.arn
+  subnet_ids      = data.aws_subnets.public.ids
+  instance_types  = var.node_instance_types
 
   scaling_config {
     desired_size = 2
-    max_size     = 4
+    max_size     = 3
     min_size     = 1
   }
 
-  remote_access {
-    ec2_ssh_key = var.key_pair_name
-  }
-
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.ecr_read_only,
+  ]
+  
   tags = {
-    Name = "nextflix-node-group"
+    Name = "${var.cluster_name}-node-group"
   }
 }
