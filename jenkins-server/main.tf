@@ -5,25 +5,34 @@ provider "aws" {
 
 # Data source to get VPC by name
 data "aws_vpc" "main" {
-  tags = {
-    Name = "main-vpc"
+  filter {
+    name   = "tag:Name"
+    values = ["main-vpc"]
   }
 }
 
 # Data source to get public subnet
 data "aws_subnet" "public" {
-  tags = {
-    Name = "public-subnet-1"  # Make sure this matches your subnet tag
-  }
   vpc_id = data.aws_vpc.main.id
+  
+  filter {
+    name   = "tag:Name"
+    values = ["public-subnet-1"]
+  }
 }
-
 # Data source to get security group
 data "aws_security_group" "jenkins" {
-  tags = {
-    Name = "jenkins-sg"
-  }
   vpc_id = data.aws_vpc.main.id
+  
+  filter {
+    name   = "tag:Name"
+    values = ["jenkins-sg"]
+  }
+
+  filter {
+    name   = "group-name"
+    values = ["jenkins-sg"]
+  }
 }
 
 # Ubuntu AMI data source
@@ -52,6 +61,12 @@ resource "aws_instance" "jenkins" {
   vpc_security_group_ids = [data.aws_security_group.jenkins.id]
 
   user_data = file("userdata.sh")
+
+  root_block_device {
+    volume_size = 30  # Recommended for Jenkins
+    volume_type = "gp3"
+    encrypted   = true
+  }
 
   tags = {
     Name = "jenkins-server"
