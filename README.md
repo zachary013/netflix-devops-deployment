@@ -1,1 +1,1 @@
-# netflix-devops-deployment
+# Cloud infra for deploying a front end Next.js app
