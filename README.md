@@ -42,7 +42,7 @@ This project provisions a complete AWS infrastructure for hosting a Netflix-like
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/netflix-devops-deployment.git
+git clone https://github.com/zachary013/netflix-devops-deployment.git
 cd netflix-devops-deployment
 ```
 
@@ -71,10 +71,11 @@ netflix-devops-deployment/
 │   ├── terraform/
 │   └── kubernetes-manifests/
 ├── jenkins-server/
-│   ├── terraform/
-│   └── pipeline-configs/
+│   ├── main/
+│   └── variables.tf/
 ├── vpc-sg/
-│   └── terraform/
+│   ├── main.tf
+│   └── variables.tf
 └── README.md
 ```
 
@@ -83,33 +84,10 @@ netflix-devops-deployment/
 The infrastructure supports a complete CI/CD workflow:
 1. Code push triggers Jenkins pipeline
 2. Application build and testing
-3. Docker image creation and push to ECR
-4. Deployment to EKS cluster
-5. Health checks and rollback capability
+3. Quality code with SonarQube
+4. Docker image creation and push to ECR
+5. Deployment to EKS cluster
 
-## 🔐 Security Considerations
-
-- All sensitive data managed through AWS Secrets Manager
-- Network isolation through VPC design
-- Least privilege access principles
-- Regular security patches through automated updates
-- Infrastructure encryption at rest and in transit
-
-## 🧰 Maintenance
-
-- Regular `terraform plan` to check for drift
-- Monitor EKS cluster health
-- Review Jenkins pipeline logs
-- Backup critical configurations
-- Keep Terraform modules updated
-
-## 📝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
 
 ## 🚨 Important Notes
 
@@ -118,10 +96,3 @@ The infrastructure supports a complete CI/CD workflow:
 - Keep security groups and access rules updated
 - Regularly update dependencies
 
-## 📬 Support
-
-For issues and feature requests, please create an issue in the repository.
-
-## 📜 License
-
-[Add your license information here]
