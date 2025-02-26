@@ -64,17 +64,20 @@ terraform apply
 ```
 netflix-devops-deployment/
 ├── ECR/
-│   ├── terraform/
-│   ├── main.tf
-│   └── variables.tf
+│   ├── main.tf/
+│   ├── outputs.tf
+│   └── variables.tf/
 ├── EKS/
-│   ├── terraform/
-│   └── kubernetes-manifests/
+│   ├── main.tf/
+│   ├── outputs.tf
+│   └── variables.tf/
 ├── jenkins-server/
-│   ├── main/
+│   ├── main.tf/
+│   ├── outputs.tf
 │   └── variables.tf/
 ├── vpc-sg/
 │   ├── main.tf
+│   ├── outputs.tf
 │   └── variables.tf
 └── README.md
 ```
